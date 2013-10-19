@@ -148,7 +148,8 @@
        <CheckBoxPreference
             android:key="tablet_statusbar"
             android:title="@string/tablet_statusbar_title"
-            android:summary="@string/tablet_statusbar_summary" />
+            android:summary="@string/tablet_statusbar_summary"
+            android:defaultValue="true" />
 
        <CheckBoxPreference
             android:key="hide_extras"

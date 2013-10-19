@@ -2,12 +2,16 @@ package com.android.settings.vanir;
 
 import android.app.Activity;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.database.ContentObserver;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.UserHandle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
@@ -40,16 +44,68 @@ public class NavRingTargets extends SettingsPreferenceFragment implements
     private int mNavRingAmount;
     private boolean mNavRingLong;
 
-    NavBarItemPreference mRing1;
-    NavBarItemPreference mRing2;
-    NavBarItemPreference mRing3;
-    NavBarItemPreference mRing4;
-    NavBarItemPreference mRing5;
-    NavBarItemPreference mLongRing1;
-    NavBarItemPreference mLongRing2;
-    NavBarItemPreference mLongRing3;
-    NavBarItemPreference mLongRing4;
-    NavBarItemPreference mLongRing5;
+    private NavringObserver mRingObserver;
+    private boolean attached = false;
+
+    private NavBarItemPreference mRing1;
+    private NavBarItemPreference mRing2;
+    private NavBarItemPreference mRing3;
+    private NavBarItemPreference mRing4;
+    private NavBarItemPreference mRing5;
+    private NavBarItemPreference mLongRing1;
+    private NavBarItemPreference mLongRing2;
+    private NavBarItemPreference mLongRing3;
+    private NavBarItemPreference mLongRing4;
+    private NavBarItemPreference mLongRing5;
+
+    class NavringObserver extends ContentObserver {
+        NavringObserver(Handler handler) {
+            super(handler);
+        }
+
+        private void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            for (int i = 0; i < 5; i++) {
+                resolver.registerContentObserver(
+                        Settings.System.getUriFor(Settings.System.SYSTEMUI_NAVRING[i]),
+                        false, this);
+                resolver.registerContentObserver(
+                        Settings.System.getUriFor(Settings.System.SYSTEMUI_NAVRING_LONG[i]),
+                        false, this);
+            }
+        }
+
+        private void unobserve() {
+            mContext.getContentResolver().unregisterContentObserver(mRingObserver);
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            sendUpdateBroadcast();
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (!attached) {
+            mRingObserver = new NavringObserver(new Handler());
+            mRingObserver.observe();
+            attached = true;
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mRingObserver.unobserve();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mRingObserver.unobserve();
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -445,5 +501,11 @@ public class NavRingTargets extends SettingsPreferenceFragment implements
         Bitmap d = ((BitmapDrawable) image).getBitmap();
         Bitmap bitmapOrig = Bitmap.createScaledBitmap(d, px, px, false);
         return new BitmapDrawable(mContext.getResources(), bitmapOrig);
+    }
+
+    private void sendUpdateBroadcast() {
+        Intent ring = new Intent();
+        ring.setAction("com.android.navring.ACTION_UPDATE");
+        mContext.sendBroadcastAsUser(ring, UserHandle.ALL);
     }
 }

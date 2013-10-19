@@ -16,8 +16,14 @@
 
 package com.android.settings.vanir;
 
-import android.os.Bundle;
+import android.content.Context;
+import android.content.ContentResolver;
+import android.content.Intent;
 import android.content.res.Resources;
+import android.database.ContentObserver;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.UserHandle;
 import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
@@ -72,6 +78,75 @@ public class HardwareKeys extends SettingsPreferenceFragment implements OnPrefer
     private ListPreference mAppSwitchPressAction;
     private ListPreference mAppSwitchLongPressAction;
     private CheckBoxPreference mShowActionOverflow;
+
+    private HardwareObserver mObserver;
+
+    private class HardwareObserver extends ContentObserver {
+        HardwareObserver(Handler handler) {
+            super(handler);
+        }
+        
+        protected void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.KEY_HOME_LONG_PRESS_ACTION), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.KEY_HOME_DOUBLE_TAP_ACTION), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.KEY_MENU_ACTION), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.KEY_MENU_LONG_PRESS_ACTION), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.KEY_ASSIST_ACTION), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.KEY_ASSIST_LONG_PRESS_ACTION), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.KEY_APP_SWITCH_ACTION), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.KEY_APP_SWITCH_LONG_PRESS_ACTION), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.HARDWARE_KEY_REBINDING), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.HOME_WAKE_SCREEN), false, this,
+                    UserHandle.USER_ALL);
+        }
+
+        private void unobserve() {
+            mContext.getContentResolver().unregisterContentObserver(mObserver);
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            sendUpdateBroadcast();
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mObserver = new HardwareObserver(new Handler());
+        mObserver.observe();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mObserver.unobserve();
+    }
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mObserver.unobserve();
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -294,5 +369,11 @@ public class HardwareKeys extends SettingsPreferenceFragment implements OnPrefer
             return true;
         }
         return false;
+    }
+
+    private void sendUpdateBroadcast() {
+        Intent u = new Intent();
+        u.setAction("com.android.hardware.ACTION_UPDATE");
+        mContext.sendBroadcastAsUser(u, UserHandle.ALL);
     }
 }

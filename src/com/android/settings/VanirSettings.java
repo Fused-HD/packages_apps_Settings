@@ -26,6 +26,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemProperties;
@@ -42,7 +43,6 @@ import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.text.format.DateFormat;
 import android.text.Spannable;
-//import android.util.Log;
 import android.view.IWindowManager;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -96,7 +96,6 @@ public class VanirSettings extends SettingsPreferenceFragment implements
     private DensityChanger densityFragment;
     private CheckBoxPreference mVolumeWake;
     private CheckBoxPreference mVolBtnMusicCtrl;
-
 
     int newDensityValue;
     private String mCustomLabelText = null;
@@ -332,7 +331,7 @@ public class VanirSettings extends SettingsPreferenceFragment implements
         if (preference == mUserModeUI) {
             Settings.System.putInt(getActivity().getContentResolver(),
                     Settings.System.USER_UI_MODE, Integer.parseInt((String) objValue));
-            Helpers.restartSystemUI();
+            delayed();
             checkUI();
             return true;
         } else if (preference == mCrtMode) {
@@ -535,4 +534,16 @@ public class VanirSettings extends SettingsPreferenceFragment implements
             mCustomLabel.setSummary(mCustomLabelText);
         }
     }
+
+    private void delayed() {
+        // take a short breather.. let things catch up
+        Handler handler = new Handler();
+        handler.postDelayed(mRestart, 120);
+    }
+
+    private Runnable mRestart = new Runnable() {
+        public void run() {
+            Helpers.restartSystemUI();
+        }
+    };
 }

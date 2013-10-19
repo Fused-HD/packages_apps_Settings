@@ -16,9 +16,13 @@
 
 package com.android.settings.vanir;
 
+import android.content.ContentResolver;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.database.ContentObserver;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.UserHandle;
 import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
@@ -52,6 +56,43 @@ public class AppSidebar extends SettingsPreferenceFragment implements
     private SeekBarPreference mTriggerWidthPref;
     private SeekBarPreference mTriggerTopPref;
     private SeekBarPreference mTriggerBottomPref;
+
+    private SettingsObserver mObserver;
+
+    class SettingsObserver extends ContentObserver {
+        SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
+        private void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.APP_SIDEBAR_ENABLED), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.APP_SIDEBAR_TRANSPARENCY), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.APP_SIDEBAR_POSITION), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.APP_SIDEBAR_DISABLE_LABELS), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.APP_SIDEBAR_TRIGGER_WIDTH), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.APP_SIDEBAR_TRIGGER_TOP), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.APP_SIDEBAR_TRIGGER_HEIGHT), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.APP_SIDEBAR_SHOW_TRIGGER), false, this);
+        }
+
+        private void unobserve() {
+            mContext.getContentResolver().unregisterContentObserver(mObserver);
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            sendUpdateBroadcast();
+        }
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -178,6 +219,7 @@ public class AppSidebar extends SettingsPreferenceFragment implements
         super.onPause();
         Settings.System.putInt(getContentResolver(),
                 Settings.System.APP_SIDEBAR_SHOW_TRIGGER, 0);
+        mObserver.unobserve();
     }
 
     @Override
@@ -185,6 +227,7 @@ public class AppSidebar extends SettingsPreferenceFragment implements
 		super.onDestroy();
 		Settings.System.putInt(getContentResolver(),
 		        Settings.System.APP_SIDEBAR_SHOW_TRIGGER, 0);
+        mObserver.unobserve();
     }
 
     @Override
@@ -192,5 +235,13 @@ public class AppSidebar extends SettingsPreferenceFragment implements
         super.onResume();    //To change body of overridden methods use File | Settings | File Templates.
         Settings.System.putInt(getContentResolver(),
                 Settings.System.APP_SIDEBAR_SHOW_TRIGGER, 1);
+        mObserver = new SettingsObserver(new Handler());
+        mObserver.observe();
+    }
+
+    private void sendUpdateBroadcast() {
+        Intent u = new Intent();
+        u.setAction("com.android.appsidebar.ACTION_UPDATE");
+        mContext.sendBroadcastAsUser(u, UserHandle.ALL);
     }
 }

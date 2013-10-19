@@ -14,9 +14,12 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.UserHandle;
 import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
@@ -57,11 +60,59 @@ public class Statusbar extends SettingsPreferenceFragment implements
     
     private final int PICK_CONTACT = 1;
 
-    Preference mEnabledToggles;
-    Preference mLayout;
-    ListPreference mTogglesPerRow;
-    Preference mFavContact;
-    ListPreference mQuickPulldown;
+    private Preference mEnabledToggles;
+    private Preference mLayout;
+    private ListPreference mTogglesPerRow;
+    private Preference mFavContact;
+    private ListPreference mQuickPulldown;
+
+    private SettingsObserver mObserver;
+
+    class SettingsObserver extends ContentObserver {
+        SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
+        void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(Settings.System
+                    .getUriFor(Settings.System.QUICK_TOGGLES),
+                    false, this);
+            resolver.registerContentObserver(Settings.System
+                    .getUriFor(Settings.System.QUICK_TOGGLES_PER_ROW),
+                    false, this);
+            resolver.registerContentObserver(Settings.System
+                    .getUriFor(Settings.System.QUICK_TOGGLE_FAV_CONTACT),
+                    false, this);
+        }
+        void unobserve() {
+            mContext.getContentResolver().unregisterContentObserver(mObserver);
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            sendUpdateBroadcast();
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mObserver = new SettingsObserver(new Handler());
+        mObserver.observe();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mObserver.unobserve();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mObserver.unobserve();
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -447,5 +498,11 @@ public class Statusbar extends SettingsPreferenceFragment implements
             }
         }
         return iloveyou;
+    }
+
+    private void sendUpdateBroadcast() {
+        Intent u = new Intent();
+        u.setAction("com.android.quicksettings.ACTION_UPDATE");
+        mContext.sendBroadcastAsUser(u, UserHandle.ALL);
     }
 }
