@@ -5806,6 +5806,5 @@ two in order to insert additional control points. \'Remove\' deletes the selecte
     <string name="lockscreen_music_controls_summary">Show music widget while music is playing</string>
     <string name="ad_excluded_apps_title">Excluded applications</string>
     <string name="ad_excluded_apps_summary">Excluded applications will not show up in active display</string>
-    <string name="timeout_off">Timeout off</string>
 
 </resources>
